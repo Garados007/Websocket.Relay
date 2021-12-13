@@ -19,12 +19,17 @@ namespace Websocket.Relay
                 .CreateLogger();
             WebServerLog.LogPreAdded += WebServerLog_LogPreAdded;
 
-            var server = new Server(new WebServerSettings(80, 5000));
+            var server = new Server(new WebServerSettings(8005, 5000));
             server.AddWebService(new HttpRequestParser());
             server.AddWebService(new HttpHeaderSpecialAction());
             server.AddWebService(new Http404Service());
             server.AddWebService(new HttpResponseCreator());
             server.AddWebService(new HttpSender());
+            server.AddWebService(new RestService().BuildService());
+
+            var ws = new MaxLib.WebServer.WebSocket.WebSocketService();
+            ws.Add(new WebSocketEndpoint());
+            server.AddWebService(ws);
 
             server.Start();
 
