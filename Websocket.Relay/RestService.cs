@@ -16,18 +16,21 @@ namespace Websocket.Relay
             var fact = new ApiRuleFactory();
             api.RestEndpoints.AddRange(new[]
             {
-                RestActionEndpoint.Create(NewConnection)
+                RestActionEndpoint.Create<bool>(NewConnection, "replay-last")
                     .Add(fact.Location(
                         fact.UrlConstant("new"),
                         fact.MaxLength()
+                    ))
+                    .Add(fact.Optional(
+                        fact.GetArgument<bool>("replay-last", bool.TryParse)
                     )),
             });
             return api;
         }
 
-        private async Task<HttpDataSource> NewConnection()
+        private async Task<HttpDataSource> NewConnection(bool replayLast)
         {
-            var group = ChannelGroup.AddGroup();
+            var group = ChannelGroup.AddGroup(replayLast);
             var stream = new MemoryStream();
             var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();

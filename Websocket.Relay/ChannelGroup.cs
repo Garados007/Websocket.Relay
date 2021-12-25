@@ -13,16 +13,19 @@ namespace Websocket.Relay
 
         public string Token { get; }
 
-        public ChannelGroup(string id, string token)
+        public bool ReplayLastMessage { get; }
+
+        public ChannelGroup(string id, string token, bool replayLastMessage)
         {
             Id = id;
             Token = token;
+            ReplayLastMessage = replayLastMessage;
         }
 
         public static ConcurrentDictionary<string, ChannelGroup> Channels { get; }
             = new ConcurrentDictionary<string, ChannelGroup>();
         
-        public static ChannelGroup AddGroup()
+        public static ChannelGroup AddGroup(bool replayLastMessage)
         {
             var rng = new Random();
             Span<byte> buffer = stackalloc byte[16];
@@ -32,7 +35,7 @@ namespace Websocket.Relay
                 var id = Convert.ToBase64String(buffer);
                 rng.NextBytes(buffer);
                 var token = Convert.ToBase64String(buffer);
-                var channel = new ChannelGroup(id, token);
+                var channel = new ChannelGroup(id, token, replayLastMessage);
                 if (!Channels.TryAdd(id, channel))
                     continue;
                 return channel;
@@ -53,6 +56,12 @@ namespace Websocket.Relay
             {
                 @lock.ExitWriteLock();
             }
+            var lastMessage = LastMessage;
+            if (lastMessage is not null)
+                Task.Run(async () =>
+                {
+                    await connection.Send(lastMessage).ConfigureAwait(false);
+                });
         }
 
         public void RemoveConnection(WebSocketConnection connection)
@@ -72,12 +81,16 @@ namespace Websocket.Relay
             }
         }
 
+        public MaxLib.WebServer.WebSocket.EventBase? LastMessage { get; private set; }
+
         public async Task Send(MaxLib.WebServer.WebSocket.EventBase @event)
         {
             Task task;
             try
             {
                 @lock.EnterReadLock();
+                if (ReplayLastMessage)
+                    LastMessage = @event;
                 task = Task.WhenAll(connections.Select(x => x.Send(@event)));
             }
             finally
