@@ -26,6 +26,8 @@ namespace Websocket.Relay
             server.AddWebService(new HttpResponseCreator());
             server.AddWebService(new HttpSender());
             server.AddWebService(new RestService().BuildService());
+            server.AddWebService(new CorsService());
+
 
             var ws = new MaxLib.WebServer.WebSocket.WebSocketService();
             ws.Add(new WebSocketEndpoint());
@@ -37,7 +39,7 @@ namespace Websocket.Relay
 
             server.Stop();
         }
-		
+
         private static readonly MessageTemplate serilogMessageTemplate =
             new Serilog.Parsing.MessageTemplateParser().Parse(
                 "{infoType}: {info}"
