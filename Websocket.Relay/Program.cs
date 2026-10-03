@@ -19,25 +19,10 @@ namespace Websocket.Relay
                 .CreateLogger();
             WebServerLog.LogPreAdded += WebServerLog_LogPreAdded;
 
-            var server = new Server(new WebServerSettings(8005, 5000));
-            server.AddWebService(new HttpRequestParser());
-            server.AddWebService(new HttpHeaderSpecialAction());
-            server.AddWebService(new Http404Service());
-            server.AddWebService(new HttpResponseCreator());
-            server.AddWebService(new HttpSender());
-            server.AddWebService(new RestService().BuildService());
-            server.AddWebService(new CorsService());
-
-
-            var ws = new MaxLib.WebServer.WebSocket.WebSocketService();
-            ws.Add(new WebSocketEndpoint());
-            server.AddWebService(ws);
-
+            var server = RelayServer.Create(8005);
             server.Start();
 
             await Task.Delay(-1);
-
-            server.Stop();
         }
 
         private static readonly MessageTemplate serilogMessageTemplate =
