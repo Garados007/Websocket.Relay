@@ -22,9 +22,17 @@ namespace Websocket.Relay
             group.AddConnection(this);
         }
 
-        protected override Task ReceiveClose(CloseReason? reason, string? info)
+        protected override async Task ReceiveClose(CloseReason? reason, string? info)
         {
-            return Task.CompletedTask;
+            // Without a close reply the ping loop never ends and the group is never cleaned up.
+            try
+            {
+                await Close(reason ?? CloseReason.NormalClose).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Debug(ex, "Cannot reply to close frame");
+            }
         }
 
         protected override Task ReceivedFrame(EventBase @event)
@@ -40,7 +48,7 @@ namespace Websocket.Relay
                         if (LastSent is not null && now - LastSent.Value < TimeSpan.FromMilliseconds(50))
                             break;
                         LastSent = now;
-                        await Group.Send(relay).ConfigureAwait(false);
+                        await Group.Send(new Events.Relay { Value = relay.Value }).ConfigureAwait(false);
                         break;
                 }
             });

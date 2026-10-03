@@ -60,7 +60,14 @@ namespace Websocket.Relay
             if (lastMessage is not null)
                 Task.Run(async () =>
                 {
-                    await connection.Send(lastMessage).ConfigureAwait(false);
+                    try
+                    {
+                        await connection.Send(lastMessage).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Debug(ex, "Cannot replay last message to connection");
+                    }
                 });
         }
 
@@ -91,7 +98,17 @@ namespace Websocket.Relay
                 @lock.EnterReadLock();
                 if (ReplayLastMessage)
                     LastMessage = @event;
-                task = Task.WhenAll(connections.Select(x => x.Send(@event)));
+                task = Task.WhenAll(connections.Select(async x =>
+                {
+                    try
+                    {
+                        await x.Send(@event).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Debug(ex, "Cannot send message to connection");
+                    }
+                }).ToList());
             }
             finally
             {

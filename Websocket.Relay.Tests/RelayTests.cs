@@ -109,13 +109,12 @@ public class RelayTests
     }
 
     [TestMethod]
-    [Ignore("MaxLib 3.0 never reports closed sockets to the group; re-enabled with the 5.0 upgrade.")]
     public async Task GroupIsRemovedWhenEmpty()
     {
         var (id, _) = await CreateGroupAsync();
         var ws = await ConnectAsync(id);
         await Close(ws);
-        var deadline = DateTime.UtcNow.AddSeconds(2);
+        var deadline = DateTime.UtcNow.AddSeconds(15); // MaxLib notices the close on its 10 s ping cycle
         while (ChannelGroup.Channels.ContainsKey(id))
         {
             if (DateTime.UtcNow > deadline)

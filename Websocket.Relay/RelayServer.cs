@@ -1,4 +1,5 @@
 using MaxLib.WebServer;
+using MaxLib.WebServer.Builder;
 using MaxLib.WebServer.Services;
 
 namespace Websocket.Relay
@@ -13,7 +14,7 @@ namespace Websocket.Relay
             server.AddWebService(new Http404Service());
             server.AddWebService(new HttpResponseCreator());
             server.AddWebService(new HttpSender());
-            server.AddWebService(new RestService().BuildService());
+            server.AddWebService(Service.Build<RestService>()!);
             server.AddWebService(new CorsService());
 
             var ws = new MaxLib.WebServer.WebSocket.WebSocketService();

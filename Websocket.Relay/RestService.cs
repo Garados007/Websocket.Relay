@@ -1,35 +1,18 @@
-using System;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using MaxLib.WebServer;
-using MaxLib.WebServer.Api.Rest;
+using MaxLib.WebServer.Builder;
 
 namespace Websocket.Relay
 {
-    public class RestService
+    public class RestService : Service
     {
-        public RestApiService BuildService()
+        [Path("/api/new")]
+        public async Task<HttpDataSource> NewConnection(WebProgressTask task)
         {
-            var api = new RestApiService("api");
-            var fact = new ApiRuleFactory();
-            api.RestEndpoints.AddRange(new[]
-            {
-                RestActionEndpoint.Create<bool>(NewConnection, "replay-last")
-                    .Add(fact.Location(
-                        fact.UrlConstant("new"),
-                        fact.MaxLength()
-                    ))
-                    .Add(fact.Optional(
-                        fact.GetArgument<bool>("replay-last", bool.TryParse)
-                    )),
-            });
-            return api;
-        }
-
-        private async Task<HttpDataSource> NewConnection(bool replayLast)
-        {
+            var replayLast = task.Request.Location.GetParameter.TryGetValue("replay-last", out var raw)
+                && bool.TryParse(raw, out var value) && value;
             var group = ChannelGroup.AddGroup(replayLast);
             var stream = new MemoryStream();
             var writer = new Utf8JsonWriter(stream);
@@ -38,6 +21,7 @@ namespace Websocket.Relay
             writer.WriteString("token", group.Token);
             writer.WriteEndObject();
             await writer.FlushAsync().ConfigureAwait(false);
+            stream.Position = 0;
 
             return new HttpStreamDataSource(stream)
             {
