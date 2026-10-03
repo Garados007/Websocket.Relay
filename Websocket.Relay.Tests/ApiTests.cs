@@ -40,4 +40,29 @@ public class ApiTests
         Assert.AreEqual("http://example.test", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
         Assert.IsTrue(response.Headers.GetValues("Vary").Any(x => x.Contains("Origin")));
     }
+
+    [TestMethod]
+    public async Task OptionsAnswersPreflightWithoutCreatingGroup()
+    {
+        var before = ChannelGroup.Channels.Count;
+        using var request = new HttpRequestMessage(HttpMethod.Options, "api/new");
+        request.Headers.Add("Origin", "http://example.test");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        request.Headers.Add("Access-Control-Request-Headers", "x-test");
+        var response = await RelayFixture.Http.SendAsync(request);
+        Assert.IsTrue(response.IsSuccessStatusCode);
+        Assert.AreEqual("http://example.test", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.AreEqual("GET", response.Headers.GetValues("Access-Control-Allow-Methods").Single());
+        Assert.AreEqual("x-test", response.Headers.GetValues("Access-Control-Allow-Headers").Single());
+        Assert.AreEqual(before, ChannelGroup.Channels.Count);
+    }
+
+    [TestMethod]
+    public async Task PostIsNotFoundWithoutCreatingGroup()
+    {
+        var before = ChannelGroup.Channels.Count;
+        var response = await RelayFixture.Http.PostAsync("api/new", null);
+        Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.AreEqual(before, ChannelGroup.Channels.Count);
+    }
 }

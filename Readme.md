@@ -3,7 +3,7 @@
 This is a simple WebSocket server that broadcasts messages from one (or more) sender to all
 receiver in the same group.
 
-One can create a new group with a call to the `/api/new` endpoint. This will return the group id and
+One can create a new group with a GET request to the `/api/new` endpoint. This will return the group id and
 the sender authentification token.
 
 ```curl

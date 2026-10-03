@@ -9,6 +9,7 @@ namespace Websocket.Relay
     public class RestService : Service
     {
         [Path("/api/new")]
+        [Method(HttpProtocolMethod.Get)]
         public async Task<HttpDataSource> NewConnection(WebProgressTask task)
         {
             var replayLast = task.Request.Location.GetParameter.TryGetValue("replay-last", out var raw)
