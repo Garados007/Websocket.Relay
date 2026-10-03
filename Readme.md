@@ -55,5 +55,10 @@ There is no message replay or notification if a new receiver has connected to yo
 also no notification if anyone left the group. If the last member of the group left, the group is
 discarded and can no longer used. You have to create a new one.
 
+A single message may be at most 1 MiB large. Larger messages close the connection of the sender
+with the status `1009` (message too big). You can change the limit (in bytes) with the environment
+variable `RELAY_MAX_MESSAGE_SIZE`; the server refuses to start if the value is not a positive
+integer.
+
 It is also recommended to reduce the data you intent to send. Large packets will take it's time to
 send to every receiver (if their internet connection is slow).

@@ -11,10 +11,11 @@ namespace Websocket.Relay
 
         public DateTime? LastSent { get; private set; }
 
-        public WebSocketConnection(ChannelGroup group, Stream networkStream, EventFactory factory)
+        public WebSocketConnection(ChannelGroup group, Stream networkStream, EventFactory factory, long maxMessageSize)
             : base(networkStream, factory)
         {
             Group = group;
+            MaxMessageSize = maxMessageSize;
             Closed += (_, _) =>
             {
                 group.RemoveConnection(this);

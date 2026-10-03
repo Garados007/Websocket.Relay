@@ -10,8 +10,11 @@ namespace Websocket.Relay
 
         private readonly EventFactory factory = new EventFactory();
 
-        public WebSocketEndpoint()
+        private readonly long maxMessageSize;
+
+        public WebSocketEndpoint(long maxMessageSize)
         {
+            this.maxMessageSize = maxMessageSize;
             // fill the factory with the known event types
             factory.Add<Events.Relay>();
         }
@@ -29,7 +32,8 @@ namespace Websocket.Relay
             return new WebSocketConnection(
                 group,
                 stream,
-                factory
+                factory,
+                maxMessageSize
             );
         }
     }

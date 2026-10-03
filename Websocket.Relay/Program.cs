@@ -9,7 +9,7 @@ namespace Websocket.Relay
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
@@ -18,7 +18,19 @@ namespace Websocket.Relay
                 .CreateLogger();
             WebServerLog.SetLoggerFactory(new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger));
 
-            using var server = RelayServer.Create(8005);
+            long maxMessageSize;
+            try
+            {
+                maxMessageSize = RelayServer.ParseMaxMessageSize(
+                    Environment.GetEnvironmentVariable("RELAY_MAX_MESSAGE_SIZE"));
+            }
+            catch (ArgumentException ex)
+            {
+                Log.Fatal(ex.Message);
+                return 1;
+            }
+
+            using var server = RelayServer.Create(8005, maxMessageSize);
 
             using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
             {
@@ -31,6 +43,7 @@ namespace Websocket.Relay
             });
 
             await server.RunAsync();
+            return 0;
         }
     }
 }
