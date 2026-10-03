@@ -10,7 +10,9 @@ namespace Websocket.Relay.Events
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Token { get; set; }
 
+        private static readonly JsonElement Null = JsonDocument.Parse("null").RootElement;
+
         [JsonPropertyName("value")]
-        public JsonElement Value { get; set; }
+        public JsonElement Value { get; set; } = Null;
     }
 }

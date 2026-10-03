@@ -1,4 +1,5 @@
 using System.Net.WebSockets;
+using System.Text.Json;
 using static Websocket.Relay.Tests.RelayFixture;
 
 namespace Websocket.Relay.Tests;
@@ -122,5 +123,18 @@ public class RelayTests
             await Task.Delay(50);
         }
         await Assert.ThrowsExactlyAsync<WebSocketException>(() => ConnectAsync(id));
+    }
+
+    [TestMethod]
+    public async Task MissingValueIsRelayedAsNull()
+    {
+        var (id, token) = await CreateGroupAsync();
+        var ws = await ConnectAsync(id);
+        await SendAsync(ws, new Dictionary<string, object?> { ["$type"] = "Relay", ["token"] = token });
+        Assert.AreEqual(JsonValueKind.Null, (await ReceiveJsonAsync(ws)).GetProperty("value").ValueKind);
+        await Task.Delay(100);
+        await SendAsync(ws, Msg(token, null));
+        Assert.AreEqual(JsonValueKind.Null, (await ReceiveJsonAsync(ws)).GetProperty("value").ValueKind);
+        await Close(ws);
     }
 }
