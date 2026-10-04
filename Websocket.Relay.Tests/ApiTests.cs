@@ -44,7 +44,7 @@ public class ApiTests
     [TestMethod]
     public async Task OptionsAnswersPreflightWithoutCreatingGroup()
     {
-        var before = ChannelGroup.Channels.Count;
+        var before = ChannelGroup.Channels.Keys.ToHashSet();
         using var request = new HttpRequestMessage(HttpMethod.Options, "api/new");
         request.Headers.Add("Origin", "http://example.test");
         request.Headers.Add("Access-Control-Request-Method", "GET");
@@ -54,15 +54,15 @@ public class ApiTests
         Assert.AreEqual("http://example.test", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
         Assert.AreEqual("GET", response.Headers.GetValues("Access-Control-Allow-Methods").Single());
         Assert.AreEqual("x-test", response.Headers.GetValues("Access-Control-Allow-Headers").Single());
-        Assert.AreEqual(before, ChannelGroup.Channels.Count);
+        Assert.IsFalse(ChannelGroup.Channels.Keys.Any(x => !before.Contains(x)), "a group was created");
     }
 
     [TestMethod]
     public async Task PostIsNotFoundWithoutCreatingGroup()
     {
-        var before = ChannelGroup.Channels.Count;
+        var before = ChannelGroup.Channels.Keys.ToHashSet();
         var response = await RelayFixture.Http.PostAsync("api/new", null);
         Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.AreEqual(before, ChannelGroup.Channels.Count);
+        Assert.IsFalse(ChannelGroup.Channels.Keys.Any(x => !before.Contains(x)), "a group was created");
     }
 }
