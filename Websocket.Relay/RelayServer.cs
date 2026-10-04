@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using MaxLib.WebServer;
 using MaxLib.WebServer.Builder;
-using MaxLib.WebServer.Services;
 
 namespace Websocket.Relay
 {
@@ -23,11 +22,7 @@ namespace Websocket.Relay
         public static Server Create(int port, long maxMessageSize = DefaultMaxMessageSize)
         {
             var server = new Server(new WebServerSettings(port, 5000));
-            server.AddWebService(new HttpRequestParser());
-            server.AddWebService(new HttpHeaderSpecialAction());
-            server.AddWebService(new Http404Service());
-            server.AddWebService(new HttpResponseCreator());
-            server.AddWebService(new HttpSender());
+            server.InitialDefault();
             server.AddWebService(Service.Build<RestService>()!);
             server.AddWebService(new CorsService());
 
