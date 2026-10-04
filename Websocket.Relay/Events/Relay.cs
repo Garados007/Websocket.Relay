@@ -1,25 +1,18 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MaxLib.WebServer.WebSocket;
 
 namespace Websocket.Relay.Events
 {
     public class Relay : EventBase
     {
-        public string? Token { get; private set; }
+        [JsonPropertyName("token")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Token { get; set; }
 
-        public JsonElement Value { get; private set; }
+        private static readonly JsonElement Null = JsonDocument.Parse("null").RootElement;
 
-        public override void ReadJsonContent(JsonElement json)
-        {
-            Token = json.TryGetProperty("token", out JsonElement node) ?
-                node.GetString() : null;
-            Value = json.TryGetProperty("value", out node) ? node : new JsonElement();
-        }
-
-        protected override void WriteJsonContent(Utf8JsonWriter writer)
-        {
-            writer.WritePropertyName("value");
-            Value.WriteTo(writer);
-        }
+        [JsonPropertyName("value")]
+        public JsonElement Value { get; set; } = Null;
     }
 }

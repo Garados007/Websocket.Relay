@@ -3,7 +3,7 @@
 This is a simple WebSocket server that broadcasts messages from one (or more) sender to all
 receiver in the same group.
 
-One can create a new group with a call to the `/api/new` endpoint. This will return the group id and
+One can create a new group with a GET request to the `/api/new` endpoint. This will return the group id and
 the sender authentification token.
 
 ```curl
@@ -54,6 +54,13 @@ loose data).
 There is no message replay or notification if a new receiver has connected to your group. There is
 also no notification if anyone left the group. If the last member of the group left, the group is
 discarded and can no longer used. You have to create a new one.
+
+If the `value` is missing it is relayed as `null`.
+
+A single message may be at most 1 MiB large. Larger messages close the connection of the sender
+with the status `1009` (message too big). You can change the limit (in bytes) with the environment
+variable `RELAY_MAX_MESSAGE_SIZE`; the server refuses to start if the value is not a positive
+integer.
 
 It is also recommended to reduce the data you intent to send. Large packets will take it's time to
 send to every receiver (if their internet connection is slow).

@@ -11,10 +11,11 @@ namespace Websocket.Relay
 
         public DateTime? LastSent { get; private set; }
 
-        public WebSocketConnection(ChannelGroup group, Stream networkStream, EventFactory factory)
+        public WebSocketConnection(ChannelGroup group, Stream networkStream, EventFactory factory, long maxMessageSize)
             : base(networkStream, factory)
         {
             Group = group;
+            MaxMessageSize = maxMessageSize;
             Closed += (_, _) =>
             {
                 group.RemoveConnection(this);
@@ -22,26 +23,39 @@ namespace Websocket.Relay
             group.AddConnection(this);
         }
 
-        protected override Task ReceiveClose(CloseReason? reason, string? info)
+        protected override async Task ReceiveClose(CloseReason? reason, string? info)
         {
-            return Task.CompletedTask;
+            // Without a close reply the ping loop never ends and the group is never cleaned up.
+            try
+            {
+                await Close(reason ?? CloseReason.NormalClose).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Debug(ex, "Cannot reply to close frame");
+            }
         }
 
         protected override Task ReceivedFrame(EventBase @event)
         {
-            _ = Task.Run(async () => 
+            // Checked before leaving the receive loop, so the rate limit cannot race between messages.
+            if (@event is not Events.Relay relay
+                || relay.Token is null
+                || relay.Token != Group.Token)
+                return Task.CompletedTask; // discard this message
+            var now = DateTime.UtcNow;
+            if (LastSent is not null && now - LastSent.Value < TimeSpan.FromMilliseconds(50))
+                return Task.CompletedTask;
+            LastSent = now;
+            _ = Task.Run(async () =>
             {
-                switch (@event)
+                try
                 {
-                    case Events.Relay relay:
-                        if (relay.Token is null || relay.Token != Group.Token)
-                            break; // discard this message
-                        var now = DateTime.UtcNow;
-                        if (LastSent is not null && now - LastSent.Value < TimeSpan.FromMilliseconds(50))
-                            break;
-                        LastSent = now;
-                        await Group.Send(relay).ConfigureAwait(false);
-                        break;
+                    await Group.Send(new Events.Relay { Value = relay.Value }).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "Cannot relay message");
                 }
             });
             return Task.CompletedTask;

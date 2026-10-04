@@ -1,71 +1,49 @@
-﻿using System;
+using System;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using MaxLib.WebServer;
-using MaxLib.WebServer.Services;
 using Serilog;
 using Serilog.Events;
-using System.Net;
-using System.Threading.Tasks;
 
 namespace Websocket.Relay
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .WriteTo.Console(LogEventLevel.Verbose,
                     outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
-            WebServerLog.LogPreAdded += WebServerLog_LogPreAdded;
+            WebServerLog.SetLoggerFactory(new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger));
 
-            var server = new Server(new WebServerSettings(8005, 5000));
-            server.AddWebService(new HttpRequestParser());
-            server.AddWebService(new HttpHeaderSpecialAction());
-            server.AddWebService(new Http404Service());
-            server.AddWebService(new HttpResponseCreator());
-            server.AddWebService(new HttpSender());
-            server.AddWebService(new RestService().BuildService());
-            server.AddWebService(new CorsService());
+            long maxMessageSize;
+            try
+            {
+                maxMessageSize = RelayServer.ParseMaxMessageSize(
+                    Environment.GetEnvironmentVariable("RELAY_MAX_MESSAGE_SIZE"));
+            }
+            catch (ArgumentException ex)
+            {
+                Log.Fatal(ex.Message);
+                return 1;
+            }
 
+            using var server = RelayServer.Create(8005, maxMessageSize);
 
-            var ws = new MaxLib.WebServer.WebSocket.WebSocketService();
-            ws.Add(new WebSocketEndpoint());
-            server.AddWebService(ws);
+            using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+            {
+                if (server.RunToken is not { } token)
+                    return;
+                // Keep the process alive until RunAsync has stopped the server.
+                context.Cancel = true;
+                Log.Information("SIGTERM received");
+                token.Cancel();
+            });
 
-            server.Start();
-
-            await Task.Delay(-1);
-
-            server.Stop();
-        }
-
-        private static readonly MessageTemplate serilogMessageTemplate =
-            new Serilog.Parsing.MessageTemplateParser().Parse(
-                "{infoType}: {info}"
-            );
-
-        private static void WebServerLog_LogPreAdded(ServerLogArgs e)
-        {
-            e.Discard = true;
-            Log.Write(new LogEvent(
-                e.LogItem.Date,
-                e.LogItem.Type switch
-                {
-                    ServerLogType.Debug => LogEventLevel.Verbose,
-                    ServerLogType.Information => LogEventLevel.Debug,
-                    ServerLogType.Error => LogEventLevel.Error,
-                    ServerLogType.FatalError => LogEventLevel.Fatal,
-                    _ => LogEventLevel.Information,
-                },
-                null,
-                serilogMessageTemplate,
-                new[]
-                {
-                        new LogEventProperty("infoType", new ScalarValue(e.LogItem.InfoType)),
-                        new LogEventProperty("info", new ScalarValue(e.LogItem.Information))
-                }
-            ));
+            await server.RunAsync();
+            return 0;
         }
     }
 }
